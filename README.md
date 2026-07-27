@@ -25,13 +25,13 @@ cd ~/.dotfiles
 ./dot sync      # copy managed config into ~/.pi, ~/.agents, ~/.claude
 ./dot doctor    # check expected tools/config
 ./dot update         # git pull, sync, pi update --all
-./dot install-herdr  # install Herdr if missing
+./dot install-herdr  # install Herdr if missing and install Pi/Claude/Codex integrations
 ```
 
 ## Secrets not tracked
 
 This repo intentionally excludes Pi/Claude auth, sessions, caches, history, and local settings.
-After bootstrapping a new machine/devbox, authenticate manually:
+The bootstrap installs Herdr integrations for Pi, Claude, and Codex. After bootstrapping a new machine/devbox, authenticate manually:
 
 ```bash
 gh auth login

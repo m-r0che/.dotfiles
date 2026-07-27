@@ -102,8 +102,10 @@ install_herdr_integrations() {
     return
   fi
 
-  log "Installing Herdr Pi integration"
-  herdr integration install pi || warn "Herdr Pi integration install failed"
+  for integration in pi claude codex; do
+    log "Installing Herdr ${integration} integration"
+    herdr integration install "$integration" || warn "Herdr ${integration} integration install failed"
+  done
 }
 
 doctor() {
@@ -121,6 +123,10 @@ doctor() {
     "$HOME/.agents/skills/herdr/SKILL.md"; do
     [ -e "$file" ] && printf '✓ %s\n' "${file/#$HOME/~}" || printf '✗ %s missing\n' "${file/#$HOME/~}"
   done
+
+  if has herdr; then
+    herdr integration status | sed -n '1,4p'
+  fi
 }
 
 case "${1:-help}" in
