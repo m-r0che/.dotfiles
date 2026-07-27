@@ -16,6 +16,58 @@ platform() {
   esac
 }
 
+backup_path() {
+  printf '%s.backup.%s' "$1" "$(date +%Y%m%d-%H%M%S)"
+}
+
+install_managed_file_if_missing_or_same() {
+  local src="$1" dest="$2"
+  mkdir -p "$(dirname "$dest")"
+  if [ ! -e "$dest" ]; then
+    cp "$src" "$dest"
+    printf '✓ installed %s\n' "${dest/#$HOME/~}"
+    return
+  fi
+  if cmp -s "$src" "$dest"; then
+    return
+  fi
+  warn "preserving existing ${dest/#$HOME/~}; managed version changed at ${src#$ROOT/}"
+}
+
+install_managed_file_with_backup() {
+  local src="$1" dest="$2" backup
+  mkdir -p "$(dirname "$dest")"
+  if [ -e "$dest" ] && ! cmp -s "$src" "$dest"; then
+    backup="$(backup_path "$dest")"
+    cp "$dest" "$backup"
+    warn "backed up existing ${dest/#$HOME/~} to ${backup/#$HOME/~}"
+  fi
+  cp "$src" "$dest"
+}
+
+ensure_gitconfig_include() {
+  local gitconfig="$HOME/.gitconfig"
+  local include_path="$HOME/.config/dotfiles/gitconfig"
+  local tmp
+  mkdir -p "$HOME/.config/dotfiles"
+  touch "$gitconfig"
+  if git config --file "$gitconfig" --get-all include.path 2>/dev/null | grep -Fxq "$include_path"; then
+    return
+  fi
+
+  log "Adding dotfiles include to ~/.gitconfig"
+  tmp="$(mktemp -t dot-gitconfig.XXXXXX)"
+  if [ -f "$ROOT/home/.gitconfig" ] && cmp -s "$ROOT/home/.gitconfig" "$gitconfig"; then
+    printf '[include]\n\tpath = %s\n' "$include_path" >"$tmp"
+  else
+    {
+      printf '[include]\n\tpath = %s\n\n' "$include_path"
+      cat "$gitconfig"
+    } >"$tmp"
+  fi
+  mv "$tmp" "$gitconfig"
+}
+
 ensure_shell_hook() {
   local rc="$1"
   local hook='[ -f "$HOME/.config/dotfiles/shell.sh" ] && . "$HOME/.config/dotfiles/shell.sh"'
@@ -43,8 +95,19 @@ install_shell_hooks() {
 
 sync_configs() {
   log "Syncing managed configs"
+  if ! has rsync; then
+    warn "rsync missing; cannot sync managed directories"
+    return 1
+  fi
+
   mkdir -p "$HOME/.pi" "$HOME/.agents" "$HOME/.claude"
-  rsync -a --exclude='.DS_Store' "$ROOT/home/.pi/" "$HOME/.pi/"
+  # Preserve live Pi settings: Pi mutates agent/settings.json for model/theme/packages.
+  rsync -a --exclude='.DS_Store' --exclude='agent/settings.json' "$ROOT/home/.pi/" "$HOME/.pi/"
+  if [ -f "$ROOT/home/.pi/agent/settings.json" ]; then
+    install_managed_file_if_missing_or_same "$ROOT/home/.pi/agent/settings.json" "$HOME/.pi/agent/settings.json"
+  fi
+
+  # Merge skills/extensions without --delete to preserve locally-added skills.
   rsync -a --exclude='.DS_Store' "$ROOT/home/.agents/" "$HOME/.agents/"
 
   if [ -d "$ROOT/home/.config/herdr" ]; then
@@ -56,10 +119,11 @@ sync_configs() {
     rsync -a --exclude='.DS_Store' "$ROOT/home/.config/dotfiles/" "$HOME/.config/dotfiles/"
   fi
   if [ -f "$ROOT/home/.gitignore_global" ]; then
-    cp "$ROOT/home/.gitignore_global" "$HOME/.gitignore_global"
+    install_managed_file_with_backup "$ROOT/home/.gitignore_global" "$HOME/.gitignore_global"
   fi
   if [ -f "$ROOT/home/.gitconfig" ]; then
-    cp "$ROOT/home/.gitconfig" "$HOME/.gitconfig"
+    cp "$ROOT/home/.gitconfig" "$HOME/.config/dotfiles/gitconfig"
+    ensure_gitconfig_include
   fi
 
   if [ -d "$ROOT/home/.claude/commands" ]; then
@@ -75,18 +139,18 @@ sync_configs() {
 install_nodesource_linux() {
   if ! has apt-get || ! has sudo; then
     warn "apt-get+sudo unavailable; skipping NodeSource setup"
-    return
+    return 1
   fi
 
   log "Configuring NodeSource Node.js ${NODE_MAJOR}.x apt repository"
-  sudo apt-get update
-  sudo apt-get install -y ca-certificates curl gnupg
-  sudo mkdir -p /etc/apt/keyrings
-  sudo rm -f /etc/apt/keyrings/nodesource.gpg
+  sudo apt-get update || return 1
+  sudo apt-get install -y ca-certificates curl gnupg || return 1
+  sudo mkdir -p /etc/apt/keyrings || return 1
+  sudo rm -f /etc/apt/keyrings/nodesource.gpg || return 1
   curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-    | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+    | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg || return 1
   echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" \
-    | sudo tee /etc/apt/sources.list.d/nodesource.list >/dev/null
+    | sudo tee /etc/apt/sources.list.d/nodesource.list >/dev/null || return 1
 }
 
 install_packages() {
@@ -96,16 +160,16 @@ install_packages() {
         warn "Homebrew missing. Install it from https://brew.sh/ then rerun ./dot init."
       else
         log "Installing macOS packages with Homebrew"
-        brew bundle --file "$ROOT/packages/Brewfile"
+        brew bundle --file "$ROOT/packages/Brewfile" || warn "Homebrew bundle failed"
       fi
       ;;
     linux)
       if has apt-get && has sudo; then
-        install_nodesource_linux
+        install_nodesource_linux || warn "NodeSource setup failed; continuing with available apt sources"
         log "Installing Linux packages with apt"
-        sudo apt-get update
-        xargs -a "$ROOT/packages/apt.txt" sudo apt-get install -y
-        sudo apt-get install -y nodejs
+        sudo apt-get update || warn "apt-get update failed"
+        xargs -a "$ROOT/packages/apt.txt" sudo apt-get install -y || warn "apt package install failed"
+        sudo apt-get install -y nodejs || warn "Node.js apt install failed"
       else
         warn "apt-get+sudo unavailable; skipping OS packages"
       fi
@@ -115,6 +179,12 @@ install_packages() {
 }
 
 install_node_tools() {
+  if [ -f "$HOME/.config/dotfiles/shell.sh" ]; then
+    # Pick up npm global bin changes made earlier in this process.
+    # shellcheck disable=SC1091
+    . "$HOME/.config/dotfiles/shell.sh"
+  fi
+
   if ! has npm; then
     warn "npm missing; skipping Pi/Wrangler install"
     return
@@ -126,6 +196,10 @@ install_node_tools() {
   if ! has wrangler; then
     log "Installing Wrangler"
     npm install -g wrangler || warn "Wrangler install failed"
+  fi
+  if [ -f "$HOME/.config/dotfiles/shell.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$HOME/.config/dotfiles/shell.sh"
   fi
   if has pi; then
     log "Installing Pi packages"
@@ -144,14 +218,14 @@ install_herdr() {
     macos)
       if has brew; then
         log "Installing Herdr with Homebrew"
-        brew install herdr
+        brew install herdr || warn "Herdr Homebrew install failed"
       else
         warn "Homebrew missing; install Herdr from https://herdr.dev/docs/quick-start/"
       fi
       ;;
     linux)
       log "Installing Herdr with official installer"
-      curl -fsSL https://herdr.dev/install.sh | sh
+      curl -fsSL https://herdr.dev/install.sh | sh || warn "Herdr installer failed"
       ;;
     *) warn "Unknown platform; install Herdr from https://herdr.dev/docs/quick-start/" ;;
   esac
@@ -179,19 +253,22 @@ check_pi_package() {
 }
 
 secret_scan() {
-  if git -C "$ROOT" grep -nE '(BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY|sk-[A-Za-z0-9_-]{20,})' -- . ':!.gitignore' >/tmp/dot-secret-scan.$$ 2>/dev/null; then
+  local tmp pattern
+  tmp="$(mktemp -t dot-secret-scan.XXXXXX)"
+  pattern='(BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY|sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{20,})'
+  if git -C "$ROOT" grep -nE "$pattern" -- . ':!.gitignore' >"$tmp" 2>/dev/null; then
     warn "possible tracked secret patterns found:"
-    cat /tmp/dot-secret-scan.$$ >&2
-    rm -f /tmp/dot-secret-scan.$$
+    cat "$tmp" >&2
+    rm -f "$tmp"
     return 1
   fi
-  rm -f /tmp/dot-secret-scan.$$
+  rm -f "$tmp"
   printf '✓ no obvious tracked secret patterns\n'
 }
 
 doctor() {
   log "Platform: $(platform)"
-  for cmd in git gh node npm pi nvim rg jq wrangler herdr; do
+  for cmd in git gh node npm pi nvim rg jq wrangler herdr rsync; do
     if has "$cmd"; then printf '✓ %s -> %s\n' "$cmd" "$(command -v "$cmd")"; else printf '✗ %s missing\n' "$cmd"; fi
   done
 
@@ -201,6 +278,7 @@ doctor() {
 
   for file in \
     "$HOME/.config/dotfiles/shell.sh" \
+    "$HOME/.config/dotfiles/gitconfig" \
     "$HOME/.config/herdr/config.toml" \
     "$HOME/.gitconfig" \
     "$HOME/.gitignore_global" \
@@ -226,7 +304,7 @@ doctor() {
   fi
 
   if has herdr; then
-    herdr integration status | sed -n '1,4p'
+    herdr integration status 2>/dev/null | sed -n '1,4p' || true
   fi
 
   if has gh && gh auth status >/dev/null 2>&1; then
@@ -237,12 +315,12 @@ doctor() {
 }
 
 case "${1:-help}" in
-  init) install_packages; sync_configs; install_shell_hooks; install_node_tools; install_herdr; install_herdr_integrations; doctor ;;
+  init) install_packages; sync_configs || true; install_shell_hooks; install_node_tools; install_herdr; install_herdr_integrations; doctor ;;
   sync|stow) sync_configs; install_shell_hooks ;;
   doctor) doctor ;;
   install-herdr) install_herdr; install_herdr_integrations ;;
   install-herdr-integrations) install_herdr_integrations ;;
-  update) git -C "$ROOT" pull --ff-only || true; sync_configs; install_shell_hooks; has pi && pi update --all || true; install_herdr_integrations; doctor ;;
+  update) git -C "$ROOT" pull --ff-only || true; sync_configs || true; install_shell_hooks; has pi && pi update --all || true; install_herdr_integrations; doctor ;;
   help|-h|--help)
     cat <<USAGE
 Usage: ./dot <command>

@@ -39,7 +39,8 @@ enabled = false
 resume_agents_on_restore = true
 
 [remote]
-manage_ssh_config = true
+# Avoid unexpected edits to ~/.ssh/config; opt in manually if needed for Herdr remotes.
+manage_ssh_config = false
 
 [experimental]
 # Keep disabled by default: pane output can include secrets.

@@ -25,7 +25,7 @@ cd ~/.dotfiles
 
 ```bash
 ./dot init                       # install packages, sync configs, install tools, run doctor
-./dot sync                       # copy managed config and shell hooks into home
+./dot sync                       # merge managed config and shell hooks into home
 ./dot doctor                     # check expected tools/config/integrations
 ./dot update                     # git pull, sync, pi update --all
 ./dot install-herdr              # install Herdr if missing and install integrations
@@ -45,6 +45,12 @@ References:
 - Node official downloads: https://nodejs.org/en/download
 - NodeSource distributions: https://github.com/nodesource/distributions
 
+## Sync safety
+
+`./dot sync` is merge-based for Pi/agent config so locally-added skills/extensions are preserved. Live app-owned Pi settings are copied only when missing; existing `~/.pi/agent/settings.json` is not overwritten by routine sync/update.
+
+Managed Git defaults are synced to `~/.config/dotfiles/gitconfig` and included from `~/.gitconfig` without overwriting existing credential helpers or identity. Put personal identity, signing config, and machine-specific settings in `~/.gitconfig.local`.
+
 ## Herdr notes
 
 The bootstrap installs Herdr integrations for:
@@ -58,6 +64,8 @@ herdr integration install codex
 `pi-herdr` is intentionally not installed for now. The Herdr skill is included so agents running inside Herdr know how to use the Herdr CLI safely.
 
 On macOS, prefer launching Herdr from your terminal rather than `brew services` so spawned Node-based agents inherit a full PATH.
+
+Herdr remote SSH config management is disabled by default to avoid surprising edits to `~/.ssh/config`; opt in manually if you need it.
 
 ## Secrets not tracked
 
