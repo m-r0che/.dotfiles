@@ -10,6 +10,12 @@ home/.pi/agent/git/
 home/.pi/agent/bin/
 home/.pi/agent/trust.json
 
+# Herdr secrets/state
+home/.config/herdr/*.log
+home/.config/herdr/*.sock
+home/.config/herdr/release-notes.json
+home/.config/herdr/pane-history/
+
 # Claude secrets/state
 home/.claude/settings.local.json
 home/.claude/history.jsonl
@@ -22,6 +28,12 @@ home/.claude/jobs/
 home/.claude/backups/
 home/.claude/plugins/
 home/.claude/*.log
+
+# Codex secrets/state
+home/.codex/auth.json
+home/.codex/sessions/
+home/.codex/history*
+home/.codex/*.log
 
 # Generic secrets
 .env

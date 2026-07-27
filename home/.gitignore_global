@@ -1,0 +1,21 @@
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor/OS noise
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local env/secrets
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+
+# Local tooling
+.direnv/

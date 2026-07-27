@@ -1,0 +1,19 @@
+# Managed by ~/.dotfiles. Put machine-specific identity/secrets in ~/.gitconfig.local.
+[include]
+	path = ~/.gitconfig.local
+
+[init]
+	defaultBranch = main
+
+[pull]
+	ff = only
+
+[push]
+	autoSetupRemote = true
+
+[core]
+	excludesfile = ~/.gitignore_global
+	editor = nvim
+
+[rerere]
+	enabled = true

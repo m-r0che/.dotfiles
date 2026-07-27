@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NODE_MAJOR="${NODE_MAJOR:-24}"
 
 log() { printf '\033[1;34m=>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mwarn:\033[0m %s\n' "$*" >&2; }
@@ -15,11 +16,52 @@ platform() {
   esac
 }
 
+ensure_shell_hook() {
+  local rc="$1"
+  local hook='[ -f "$HOME/.config/dotfiles/shell.sh" ] && . "$HOME/.config/dotfiles/shell.sh"'
+  mkdir -p "$(dirname "$rc")"
+  touch "$rc"
+  if ! grep -Fq '.config/dotfiles/shell.sh' "$rc"; then
+    log "Adding dotfiles shell hook to ${rc/#$HOME/~}"
+    {
+      printf '\n# dotfiles shell bootstrap\n'
+      printf '%s\n' "$hook"
+    } >>"$rc"
+  fi
+}
+
+install_shell_hooks() {
+  log "Installing shell PATH hooks"
+  ensure_shell_hook "$HOME/.profile"
+  ensure_shell_hook "$HOME/.bashrc"
+  if [ -n "${ZDOTDIR:-}" ]; then
+    ensure_shell_hook "$ZDOTDIR/.zshrc"
+  else
+    ensure_shell_hook "$HOME/.zshrc"
+  fi
+}
+
 sync_configs() {
   log "Syncing managed configs"
   mkdir -p "$HOME/.pi" "$HOME/.agents" "$HOME/.claude"
   rsync -a --exclude='.DS_Store' "$ROOT/home/.pi/" "$HOME/.pi/"
   rsync -a --exclude='.DS_Store' "$ROOT/home/.agents/" "$HOME/.agents/"
+
+  if [ -d "$ROOT/home/.config/herdr" ]; then
+    mkdir -p "$HOME/.config/herdr"
+    rsync -a --exclude='.DS_Store' "$ROOT/home/.config/herdr/" "$HOME/.config/herdr/"
+  fi
+  if [ -d "$ROOT/home/.config/dotfiles" ]; then
+    mkdir -p "$HOME/.config/dotfiles"
+    rsync -a --exclude='.DS_Store' "$ROOT/home/.config/dotfiles/" "$HOME/.config/dotfiles/"
+  fi
+  if [ -f "$ROOT/home/.gitignore_global" ]; then
+    cp "$ROOT/home/.gitignore_global" "$HOME/.gitignore_global"
+  fi
+  if [ -f "$ROOT/home/.gitconfig" ]; then
+    cp "$ROOT/home/.gitconfig" "$HOME/.gitconfig"
+  fi
+
   if [ -d "$ROOT/home/.claude/commands" ]; then
     mkdir -p "$HOME/.claude/commands"
     rsync -a --delete --exclude='.DS_Store' "$ROOT/home/.claude/commands/" "$HOME/.claude/commands/"
@@ -28,6 +70,23 @@ sync_configs() {
     mkdir -p "$HOME/.claude/agents"
     rsync -a --delete --exclude='.DS_Store' "$ROOT/home/.claude/agents/" "$HOME/.claude/agents/"
   fi
+}
+
+install_nodesource_linux() {
+  if ! has apt-get || ! has sudo; then
+    warn "apt-get+sudo unavailable; skipping NodeSource setup"
+    return
+  fi
+
+  log "Configuring NodeSource Node.js ${NODE_MAJOR}.x apt repository"
+  sudo apt-get update
+  sudo apt-get install -y ca-certificates curl gnupg
+  sudo mkdir -p /etc/apt/keyrings
+  sudo rm -f /etc/apt/keyrings/nodesource.gpg
+  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+    | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" \
+    | sudo tee /etc/apt/sources.list.d/nodesource.list >/dev/null
 }
 
 install_packages() {
@@ -42,9 +101,11 @@ install_packages() {
       ;;
     linux)
       if has apt-get && has sudo; then
+        install_nodesource_linux
         log "Installing Linux packages with apt"
         sudo apt-get update
         xargs -a "$ROOT/packages/apt.txt" sudo apt-get install -y
+        sudo apt-get install -y nodejs
       else
         warn "apt-get+sudo unavailable; skipping OS packages"
       fi
@@ -108,12 +169,41 @@ install_herdr_integrations() {
   done
 }
 
+check_pi_package() {
+  local pkg="$1"
+  if [ -f "$HOME/.pi/agent/settings.json" ] && grep -Fq "\"$pkg\"" "$HOME/.pi/agent/settings.json"; then
+    printf '✓ pi package %s configured\n' "$pkg"
+  else
+    printf '✗ pi package %s missing from settings\n' "$pkg"
+  fi
+}
+
+secret_scan() {
+  if git -C "$ROOT" grep -nE '(BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY|sk-[A-Za-z0-9_-]{20,})' -- . ':!.gitignore' >/tmp/dot-secret-scan.$$ 2>/dev/null; then
+    warn "possible tracked secret patterns found:"
+    cat /tmp/dot-secret-scan.$$ >&2
+    rm -f /tmp/dot-secret-scan.$$
+    return 1
+  fi
+  rm -f /tmp/dot-secret-scan.$$
+  printf '✓ no obvious tracked secret patterns\n'
+}
+
 doctor() {
   log "Platform: $(platform)"
   for cmd in git gh node npm pi nvim rg jq wrangler herdr; do
     if has "$cmd"; then printf '✓ %s -> %s\n' "$cmd" "$(command -v "$cmd")"; else printf '✗ %s missing\n' "$cmd"; fi
   done
+
+  if has node; then printf 'node version: %s\n' "$(node --version)"; fi
+  if has npm; then printf 'npm version: %s\n' "$(npm --version)"; fi
+  if has pi; then printf 'pi version: %s\n' "$(pi --version 2>/dev/null || true)"; fi
+
   for file in \
+    "$HOME/.config/dotfiles/shell.sh" \
+    "$HOME/.config/herdr/config.toml" \
+    "$HOME/.gitconfig" \
+    "$HOME/.gitignore_global" \
     "$HOME/.pi/agent/extensions/git-interceptor.ts" \
     "$HOME/.pi/agent/extensions/worker-configuration-guard.ts" \
     "$HOME/.pi/agent/extensions/pi-cloak/index.ts" \
@@ -124,30 +214,50 @@ doctor() {
     [ -e "$file" ] && printf '✓ %s\n' "${file/#$HOME/~}" || printf '✗ %s missing\n' "${file/#$HOME/~}"
   done
 
+  check_pi_package "npm:pi-web-access"
+  check_pi_package "npm:@plannotator/pi-extension"
+
+  if has git; then
+    if git config --global --includes user.name >/dev/null && git config --global --includes user.email >/dev/null; then
+      printf '✓ git global identity configured\n'
+    else
+      warn "git global user.name/user.email not set; put machine-specific identity in ~/.gitconfig.local"
+    fi
+  fi
+
   if has herdr; then
     herdr integration status | sed -n '1,4p'
   fi
+
+  if has gh && gh auth status >/dev/null 2>&1; then
+    gh repo view m-r0che/.dotfiles --json visibility -q '"GitHub repo visibility: " + .visibility' || true
+  fi
+
+  secret_scan || true
 }
 
 case "${1:-help}" in
-  init) install_packages; sync_configs; install_node_tools; install_herdr; install_herdr_integrations; doctor ;;
-  sync|stow) sync_configs ;;
+  init) install_packages; sync_configs; install_shell_hooks; install_node_tools; install_herdr; install_herdr_integrations; doctor ;;
+  sync|stow) sync_configs; install_shell_hooks ;;
   doctor) doctor ;;
   install-herdr) install_herdr; install_herdr_integrations ;;
   install-herdr-integrations) install_herdr_integrations ;;
-  update) git -C "$ROOT" pull --ff-only || true; sync_configs; has pi && pi update --all || true; install_herdr_integrations; doctor ;;
+  update) git -C "$ROOT" pull --ff-only || true; sync_configs; install_shell_hooks; has pi && pi update --all || true; install_herdr_integrations; doctor ;;
   help|-h|--help)
     cat <<USAGE
 Usage: ./dot <command>
 
 Commands:
-  init     Install packages, sync configs, install Pi packages, run doctor
-  sync     Sync managed configs into home directory
-  stow     Alias for sync (configs are merged with rsync for safety)
-  doctor                      Check expected tools and files
-  install-herdr               Install Herdr and Pi integration
+  init                        Install packages, sync configs, install tools, run doctor
+  sync                        Sync managed configs and shell hooks into home directory
+  stow                        Alias for sync (configs are merged with rsync for safety)
+  doctor                      Check expected tools, files, integrations, and obvious leaks
+  install-herdr               Install Herdr and Pi/Claude/Codex integrations
   install-herdr-integrations  Install Herdr agent integrations only
   update                      Pull repo, sync configs, run pi update --all
+
+Environment:
+  NODE_MAJOR=24               NodeSource major version used on Linux apt systems
 USAGE
     ;;
   *) echo "Unknown command: $1" >&2; exit 2 ;;

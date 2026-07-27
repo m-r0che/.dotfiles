@@ -15,26 +15,67 @@ cd ~/.dotfiles
 - Pi extensions and package settings
 - Global agent skills (`~/.agents/skills`)
 - Selected Claude commands/agents
+- Herdr config, skill, and Pi/Claude/Codex integrations
+- Shell PATH bootstrap for `~/.local/bin`, Homebrew, and npm globals
+- Git defaults and global ignore file
 - Basic macOS/Linux package lists
-- Herdr skill and optional Herdr installer helper
+- Wrangler for Cloudflare development
 
 ## Commands
 
 ```bash
-./dot init      # install packages where possible, sync configs, install Pi packages
-./dot sync      # copy managed config into ~/.pi, ~/.agents, ~/.claude
-./dot doctor    # check expected tools/config
-./dot update         # git pull, sync, pi update --all
-./dot install-herdr  # install Herdr if missing and install Pi/Claude/Codex integrations
+./dot init                       # install packages, sync configs, install tools, run doctor
+./dot sync                       # copy managed config and shell hooks into home
+./dot doctor                     # check expected tools/config/integrations
+./dot update                     # git pull, sync, pi update --all
+./dot install-herdr              # install Herdr if missing and install integrations
+./dot install-herdr-integrations # install Pi/Claude/Codex Herdr integrations only
 ```
+
+## Linux Node.js strategy
+
+Linux apt systems use the NodeSource apt repository instead of relying on distro `nodejs/npm` packages, which can lag behind current Node LTS releases. The default major is Node 24 and can be changed per run:
+
+```bash
+NODE_MAJOR=22 ./dot init
+```
+
+References:
+
+- Node official downloads: https://nodejs.org/en/download
+- NodeSource distributions: https://github.com/nodesource/distributions
+
+## Herdr notes
+
+The bootstrap installs Herdr integrations for:
+
+```bash
+herdr integration install pi
+herdr integration install claude
+herdr integration install codex
+```
+
+`pi-herdr` is intentionally not installed for now. The Herdr skill is included so agents running inside Herdr know how to use the Herdr CLI safely.
+
+On macOS, prefer launching Herdr from your terminal rather than `brew services` so spawned Node-based agents inherit a full PATH.
 
 ## Secrets not tracked
 
-This repo intentionally excludes Pi/Claude auth, sessions, caches, history, and local settings.
-The bootstrap installs Herdr integrations for Pi, Claude, and Codex. After bootstrapping a new machine/devbox, authenticate manually:
+This repo intentionally excludes Pi/Claude/Codex auth, sessions, caches, history, Herdr logs/socket/history, env files, and local settings.
+
+After bootstrapping a new machine/devbox, add machine-specific Git identity and authenticate manually:
 
 ```bash
+cat > ~/.gitconfig.local <<'EOF'
+[user]
+	name = Your Name
+	email = you@example.com
+EOF
+
 gh auth login
 pi /login
 wrangler login
+# if used:
+claude
+codex
 ```
