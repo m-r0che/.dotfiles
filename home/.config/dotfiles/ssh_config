@@ -1,0 +1,6 @@
+# SSH config managed by ~/.dotfiles.
+# Included from ~/.ssh/config via: Include ~/.config/dotfiles/ssh_config
+# Keep hostnames, usernames, keys, and one-off private hosts in the ignored
+# local fragment below, not in the tracked dotfiles repo.
+
+Include ~/.config/dotfiles/ssh_config.local

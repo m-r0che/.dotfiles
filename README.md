@@ -18,6 +18,7 @@ cd ~/.dotfiles
 - Herdr config, skill, and Pi/Claude/Codex integrations
 - Shell PATH bootstrap for `~/.local/bin`, Homebrew, and npm globals
 - Git defaults and global ignore file
+- SSH host alias template/local include (included into `~/.ssh/config`)
 - Basic macOS/Linux package lists
 - Wrangler for Cloudflare development
 
@@ -65,7 +66,39 @@ herdr integration install codex
 
 On macOS, prefer launching Herdr from your terminal rather than `brew services` so spawned Node-based agents inherit a full PATH.
 
-Herdr remote SSH config management is disabled by default to avoid surprising edits to `~/.ssh/config`; opt in manually if you need it.
+Herdr's `manage_ssh_config` is enabled so `herdr --remote` gets keepalive and
+control-socket connection reuse. This is a temporary config Herdr generates for
+its own connections and does not modify your real `~/.ssh/config`.
+
+## Remote work from your local terminal
+
+`herdr --remote` runs a local thin client that starts/attaches a Herdr server on
+a remote devbox and streams its UI back to you (keeping local desktop features
+like image clipboard paste). See https://herdr.dev/docs/how-to-work/.
+
+Provision the devbox with the same dotfiles, configure a local-only SSH alias,
+then attach to a persistent session:
+
+```bash
+# Local-only: do not commit real hostnames/IPs/users.
+cp ~/.dotfiles/home/.config/dotfiles/ssh_config.local.example \
+  ~/.dotfiles/home/.config/dotfiles/ssh_config.local
+$EDITOR ~/.dotfiles/home/.config/dotfiles/ssh_config.local
+cd ~/.dotfiles && ./dot sync
+
+# On the devbox (Ubuntu, passwordless sudo): give it parity with local.
+git clone https://github.com/m-r0che/.dotfiles ~/.dotfiles   # or rsync your checkout up
+cd ~/.dotfiles && ./dot init                                 # herdr + integrations + PATH + config
+
+# From your local machine:
+herdr --remote abi --session abi   # attach/create the "abi" session; ctrl+b q detaches
+```
+
+The tracked SSH config only includes an ignored local fragment:
+`home/.config/dotfiles/ssh_config.local`. Keep real hostnames/IPs/users there
+(or directly in `~/.ssh/config`), not in tracked files. Keep the local and remote
+Herdr versions matched — `herdr --remote` auto-installs a matching build to
+`~/.local/bin/herdr` on the devbox when needed.
 
 ## Secrets not tracked
 

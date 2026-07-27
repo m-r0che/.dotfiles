@@ -1,0 +1,10 @@
+# Copy to ~/.config/dotfiles/ssh_config.local or
+# ~/.dotfiles/home/.config/dotfiles/ssh_config.local and fill in locally.
+# This file is a template; do not put real hostnames/IPs/users in tracked files.
+
+Host abi
+  HostName <devbox-host-or-ip>
+  User <ssh-user>
+  ServerAliveInterval 30
+  ServerAliveCountMax 3
+  AddKeysToAgent yes

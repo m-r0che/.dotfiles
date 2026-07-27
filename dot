@@ -68,6 +68,41 @@ ensure_gitconfig_include() {
   mv "$tmp" "$gitconfig"
 }
 
+ensure_ssh_include() {
+  local ssh_config="$HOME/.ssh/config"
+  local include_line="Include ~/.config/dotfiles/ssh_config"
+  local tmp backup
+  mkdir -p "$HOME/.ssh"
+  chmod 700 "$HOME/.ssh" 2>/dev/null || true
+  if [ ! -e "$ssh_config" ] && [ ! -L "$ssh_config" ]; then
+    : >"$ssh_config"
+  fi
+  chmod 600 "$ssh_config" 2>/dev/null || true
+  # Prepend the Include: in ssh_config the earliest value for a keyword wins,
+  # so managed Host blocks must be read before any later "Host *" catch-all.
+  if grep -Fxq "$include_line" "$ssh_config" 2>/dev/null; then
+    return
+  fi
+
+  log "Adding dotfiles Include to ~/.ssh/config"
+  if [ -s "$ssh_config" ] || [ -L "$ssh_config" ]; then
+    backup="$(backup_path "$ssh_config")"
+    if cp "$ssh_config" "$backup" 2>/dev/null; then
+      warn "backed up existing ${ssh_config/#$HOME/~} to ${backup/#$HOME/~}"
+    fi
+  fi
+  tmp="$(mktemp -t dot-sshconfig.XXXXXX)"
+  {
+    printf '%s\n\n' "$include_line"
+    cat "$ssh_config"
+  } >"$tmp"
+  # Write through the path instead of renaming over it, so a symlinked
+  # ~/.ssh/config remains a symlink to the user's chosen config file.
+  cat "$tmp" >"$ssh_config"
+  rm -f "$tmp"
+  chmod 600 "$ssh_config" 2>/dev/null || true
+}
+
 ensure_shell_hook() {
   local rc="$1"
   local hook='[ -f "$HOME/.config/dotfiles/shell.sh" ] && . "$HOME/.config/dotfiles/shell.sh"'
@@ -124,6 +159,11 @@ sync_configs() {
   if [ -f "$ROOT/home/.gitconfig" ]; then
     cp "$ROOT/home/.gitconfig" "$HOME/.config/dotfiles/gitconfig"
     ensure_gitconfig_include
+  fi
+  # SSH aliases: the fragment ships via the .config/dotfiles rsync above; just
+  # ensure ~/.ssh/config includes it (without touching existing host entries).
+  if [ -f "$ROOT/home/.config/dotfiles/ssh_config" ]; then
+    ensure_ssh_include
   fi
 
   if [ -d "$ROOT/home/.claude/commands" ]; then
@@ -279,6 +319,7 @@ doctor() {
   for file in \
     "$HOME/.config/dotfiles/shell.sh" \
     "$HOME/.config/dotfiles/gitconfig" \
+    "$HOME/.config/dotfiles/ssh_config" \
     "$HOME/.config/herdr/config.toml" \
     "$HOME/.gitconfig" \
     "$HOME/.gitignore_global" \

@@ -10,6 +10,9 @@ home/.pi/agent/git/
 home/.pi/agent/bin/
 home/.pi/agent/trust.json
 
+# Local machine config
+home/.config/dotfiles/ssh_config.local
+
 # Herdr secrets/state
 home/.config/herdr/*.log
 home/.config/herdr/*.sock
