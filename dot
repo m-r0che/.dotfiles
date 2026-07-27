@@ -96,6 +96,16 @@ install_herdr() {
   esac
 }
 
+install_herdr_integrations() {
+  if ! has herdr; then
+    warn "Herdr missing; skipping Herdr agent integrations"
+    return
+  fi
+
+  log "Installing Herdr Pi integration"
+  herdr integration install pi || warn "Herdr Pi integration install failed"
+}
+
 doctor() {
   log "Platform: $(platform)"
   for cmd in git gh node npm pi nvim rg jq wrangler herdr; do
@@ -114,11 +124,12 @@ doctor() {
 }
 
 case "${1:-help}" in
-  init) install_packages; sync_configs; install_node_tools; doctor ;;
+  init) install_packages; sync_configs; install_node_tools; install_herdr; install_herdr_integrations; doctor ;;
   sync|stow) sync_configs ;;
   doctor) doctor ;;
-  install-herdr) install_herdr ;;
-  update) git -C "$ROOT" pull --ff-only || true; sync_configs; has pi && pi update --all || true; doctor ;;
+  install-herdr) install_herdr; install_herdr_integrations ;;
+  install-herdr-integrations) install_herdr_integrations ;;
+  update) git -C "$ROOT" pull --ff-only || true; sync_configs; has pi && pi update --all || true; install_herdr_integrations; doctor ;;
   help|-h|--help)
     cat <<USAGE
 Usage: ./dot <command>
@@ -127,9 +138,10 @@ Commands:
   init     Install packages, sync configs, install Pi packages, run doctor
   sync     Sync managed configs into home directory
   stow     Alias for sync (configs are merged with rsync for safety)
-  doctor        Check expected tools and files
-  install-herdr Install Herdr (Homebrew on macOS; official installer on Linux)
-  update        Pull repo, sync configs, run pi update --all
+  doctor                      Check expected tools and files
+  install-herdr               Install Herdr and Pi integration
+  install-herdr-integrations  Install Herdr agent integrations only
+  update                      Pull repo, sync configs, run pi update --all
 USAGE
     ;;
   *) echo "Unknown command: $1" >&2; exit 2 ;;
