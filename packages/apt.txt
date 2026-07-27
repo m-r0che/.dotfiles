@@ -1,0 +1,14 @@
+ca-certificates
+curl
+build-essential
+git
+gh
+jq
+fzf
+neovim
+nodejs
+npm
+python3
+python3-pip
+ripgrep
+stow

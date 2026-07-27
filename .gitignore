@@ -1,0 +1,32 @@
+.DS_Store
+*.log
+
+# Pi secrets/state
+home/.pi/agent/auth.json
+home/.pi/agent/models-store.json
+home/.pi/agent/sessions/
+home/.pi/agent/npm/
+home/.pi/agent/git/
+home/.pi/agent/bin/
+home/.pi/agent/trust.json
+
+# Claude secrets/state
+home/.claude/settings.local.json
+home/.claude/history.jsonl
+home/.claude/projects/
+home/.claude/cache/
+home/.claude/file-history/
+home/.claude/paste-cache/
+home/.claude/daemon/
+home/.claude/jobs/
+home/.claude/backups/
+home/.claude/plugins/
+home/.claude/*.log
+
+# Generic secrets
+.env
+.env.*
+*.pem
+*.key
+
+home/.agents/skills/supaterm

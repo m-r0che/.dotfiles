@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+log() { printf '\033[1;34m=>\033[0m %s\n' "$*"; }
+warn() { printf '\033[1;33mwarn:\033[0m %s\n' "$*" >&2; }
+has() { command -v "$1" >/dev/null 2>&1; }
+
+platform() {
+  case "$(uname -s)" in
+    Darwin) echo macos ;;
+    Linux) echo linux ;;
+    *) echo unknown ;;
+  esac
+}
+
+sync_configs() {
+  log "Syncing managed configs"
+  mkdir -p "$HOME/.pi" "$HOME/.agents" "$HOME/.claude"
+  rsync -a --exclude='.DS_Store' "$ROOT/home/.pi/" "$HOME/.pi/"
+  rsync -a --exclude='.DS_Store' "$ROOT/home/.agents/" "$HOME/.agents/"
+  if [ -d "$ROOT/home/.claude/commands" ]; then
+    mkdir -p "$HOME/.claude/commands"
+    rsync -a --delete --exclude='.DS_Store' "$ROOT/home/.claude/commands/" "$HOME/.claude/commands/"
+  fi
+  if [ -d "$ROOT/home/.claude/agents" ]; then
+    mkdir -p "$HOME/.claude/agents"
+    rsync -a --delete --exclude='.DS_Store' "$ROOT/home/.claude/agents/" "$HOME/.claude/agents/"
+  fi
+}
+
+install_packages() {
+  case "$(platform)" in
+    macos)
+      if ! has brew; then
+        warn "Homebrew missing. Install it from https://brew.sh/ then rerun ./dot init."
+      else
+        log "Installing macOS packages with Homebrew"
+        brew bundle --file "$ROOT/packages/Brewfile"
+      fi
+      ;;
+    linux)
+      if has apt-get && has sudo; then
+        log "Installing Linux packages with apt"
+        sudo apt-get update
+        xargs -a "$ROOT/packages/apt.txt" sudo apt-get install -y
+      else
+        warn "apt-get+sudo unavailable; skipping OS packages"
+      fi
+      ;;
+    *) warn "Unknown platform; skipping OS packages" ;;
+  esac
+}
+
+install_node_tools() {
+  if ! has npm; then
+    warn "npm missing; skipping Pi/Wrangler install"
+    return
+  fi
+  if ! has pi; then
+    log "Installing Pi"
+    npm install -g --ignore-scripts @earendil-works/pi-coding-agent || warn "Pi install failed"
+  fi
+  if ! has wrangler; then
+    log "Installing Wrangler"
+    npm install -g wrangler || warn "Wrangler install failed"
+  fi
+  if has pi; then
+    log "Installing Pi packages"
+    pi install npm:pi-web-access || true
+    pi install npm:@plannotator/pi-extension || true
+  fi
+}
+
+doctor() {
+  log "Platform: $(platform)"
+  for cmd in git gh node npm pi nvim rg jq wrangler; do
+    if has "$cmd"; then printf '✓ %s -> %s\n' "$cmd" "$(command -v "$cmd")"; else printf '✗ %s missing\n' "$cmd"; fi
+  done
+  for file in \
+    "$HOME/.pi/agent/extensions/git-interceptor.ts" \
+    "$HOME/.pi/agent/extensions/worker-configuration-guard.ts" \
+    "$HOME/.pi/agent/extensions/pi-cloak/index.ts" \
+    "$HOME/.pi/agent/cloak.json" \
+    "$HOME/.agents/skills/wayfinder/SKILL.md" \
+    "$HOME/.agents/skills/code-review/SKILL.md"; do
+    [ -e "$file" ] && printf '✓ %s\n' "${file/#$HOME/~}" || printf '✗ %s missing\n' "${file/#$HOME/~}"
+  done
+}
+
+case "${1:-help}" in
+  init) install_packages; sync_configs; install_node_tools; doctor ;;
+  sync|stow) sync_configs ;;
+  doctor) doctor ;;
+  update) git -C "$ROOT" pull --ff-only || true; sync_configs; has pi && pi update --all || true; doctor ;;
+  help|-h|--help)
+    cat <<USAGE
+Usage: ./dot <command>
+
+Commands:
+  init     Install packages, sync configs, install Pi packages, run doctor
+  sync     Sync managed configs into home directory
+  stow     Alias for sync (configs are merged with rsync for safety)
+  doctor   Check expected tools and files
+  update   Pull repo, sync configs, run pi update --all
+USAGE
+    ;;
+  *) echo "Unknown command: $1" >&2; exit 2 ;;
+esac
