@@ -16,6 +16,7 @@ cd ~/.dotfiles
 - Global agent skills (`~/.agents/skills`)
 - Selected Claude commands/agents
 - Basic macOS/Linux package lists
+- Herdr skill and optional Herdr installer helper
 
 ## Commands
 
@@ -23,7 +24,8 @@ cd ~/.dotfiles
 ./dot init      # install packages where possible, sync configs, install Pi packages
 ./dot sync      # copy managed config into ~/.pi, ~/.agents, ~/.claude
 ./dot doctor    # check expected tools/config
-./dot update    # git pull, sync, pi update --all
+./dot update         # git pull, sync, pi update --all
+./dot install-herdr  # install Herdr if missing
 ```
 
 ## Secrets not tracked

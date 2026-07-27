@@ -1,6 +1,7 @@
 brew "git"
 brew "gh"
 brew "node"
+brew "herdr"
 brew "stow"
 brew "neovim"
 brew "ripgrep"

@@ -73,9 +73,32 @@ install_node_tools() {
   fi
 }
 
+install_herdr() {
+  if has herdr; then
+    log "Herdr already installed: $(command -v herdr)"
+    return
+  fi
+
+  case "$(platform)" in
+    macos)
+      if has brew; then
+        log "Installing Herdr with Homebrew"
+        brew install herdr
+      else
+        warn "Homebrew missing; install Herdr from https://herdr.dev/docs/quick-start/"
+      fi
+      ;;
+    linux)
+      log "Installing Herdr with official installer"
+      curl -fsSL https://herdr.dev/install.sh | sh
+      ;;
+    *) warn "Unknown platform; install Herdr from https://herdr.dev/docs/quick-start/" ;;
+  esac
+}
+
 doctor() {
   log "Platform: $(platform)"
-  for cmd in git gh node npm pi nvim rg jq wrangler; do
+  for cmd in git gh node npm pi nvim rg jq wrangler herdr; do
     if has "$cmd"; then printf '✓ %s -> %s\n' "$cmd" "$(command -v "$cmd")"; else printf '✗ %s missing\n' "$cmd"; fi
   done
   for file in \
@@ -84,7 +107,8 @@ doctor() {
     "$HOME/.pi/agent/extensions/pi-cloak/index.ts" \
     "$HOME/.pi/agent/cloak.json" \
     "$HOME/.agents/skills/wayfinder/SKILL.md" \
-    "$HOME/.agents/skills/code-review/SKILL.md"; do
+    "$HOME/.agents/skills/code-review/SKILL.md" \
+    "$HOME/.agents/skills/herdr/SKILL.md"; do
     [ -e "$file" ] && printf '✓ %s\n' "${file/#$HOME/~}" || printf '✗ %s missing\n' "${file/#$HOME/~}"
   done
 }
@@ -93,6 +117,7 @@ case "${1:-help}" in
   init) install_packages; sync_configs; install_node_tools; doctor ;;
   sync|stow) sync_configs ;;
   doctor) doctor ;;
+  install-herdr) install_herdr ;;
   update) git -C "$ROOT" pull --ff-only || true; sync_configs; has pi && pi update --all || true; doctor ;;
   help|-h|--help)
     cat <<USAGE
@@ -102,8 +127,9 @@ Commands:
   init     Install packages, sync configs, install Pi packages, run doctor
   sync     Sync managed configs into home directory
   stow     Alias for sync (configs are merged with rsync for safety)
-  doctor   Check expected tools and files
-  update   Pull repo, sync configs, run pi update --all
+  doctor        Check expected tools and files
+  install-herdr Install Herdr (Homebrew on macOS; official installer on Linux)
+  update        Pull repo, sync configs, run pi update --all
 USAGE
     ;;
   *) echo "Unknown command: $1" >&2; exit 2 ;;
