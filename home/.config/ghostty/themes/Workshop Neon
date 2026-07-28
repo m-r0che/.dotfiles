@@ -1,0 +1,26 @@
+# Workshop Neon
+# Quiet cyberpunk: soot, worn metal, warm lamplight, and old monitor glow.
+
+palette = 0=#111719
+palette = 1=#d46f64
+palette = 2=#8fb573
+palette = 3=#d4b968
+palette = 4=#79a9bd
+palette = 5=#bd86aa
+palette = 6=#63b7aa
+palette = 7=#c5c5b8
+palette = 8=#526266
+palette = 9=#e68173
+palette = 10=#a6c98b
+palette = 11=#e2ca7a
+palette = 12=#92bdd0
+palette = 13=#d19bbd
+palette = 14=#7ccbc0
+palette = 15=#f0ead8
+
+background = #0d1214
+foreground = #ded8c7
+cursor-color = #e0a15a
+cursor-text = #0d1214
+selection-background = #334449
+selection-foreground = #f0ead8

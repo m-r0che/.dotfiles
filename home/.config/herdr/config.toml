@@ -1,7 +1,31 @@
 # Herdr configuration managed by ~/.dotfiles.
-# Keep this conservative: no machine-specific shell, theme, or aggressive keybinding choices.
+# Keep this portable: no machine-specific shell or aggressive keybinding choices.
 
 onboarding = false
+
+# "Workshop Neon": soot and worn metal with warm copper light and restrained
+# teal/magenta electronics. Vesper supplies Herdr's non-color styling.
+[theme]
+name = "vesper"
+auto_switch = false
+
+[theme.custom]
+panel_bg = "#0d1214"
+surface_dim = "#101719"
+surface0 = "#151d1f"
+surface1 = "#202b2e"
+overlay0 = "#526266"
+overlay1 = "#728488"
+text = "#ded8c7"
+subtext0 = "#a7aca3"
+accent = "#e0a15a"
+peach = "#e38b58"
+teal = "#63b7aa"
+blue = "#79a9bd"
+mauve = "#bd86aa"
+green = "#8fb573"
+yellow = "#d4b968"
+red = "#d46f64"
 
 [terminal]
 # New panes/tabs start in the current pane's directory.
@@ -12,6 +36,7 @@ shell_mode = "auto"
 channel = "stable"
 
 [ui]
+accent = "#e0a15a"
 sidebar_width = 32
 sidebar_min_width = 18
 sidebar_max_width = 40
@@ -22,6 +47,8 @@ confirm_close = false
 prompt_new_tab_name = true
 prompt_new_workspace_name = true
 agent_panel_sort = "spaces"
+pane_borders = true
+pane_gaps = true
 show_agent_labels_on_pane_borders = false
 
 [ui.toast]

@@ -149,6 +149,10 @@ sync_configs() {
     mkdir -p "$HOME/.config/herdr"
     rsync -a --exclude='.DS_Store' "$ROOT/home/.config/herdr/" "$HOME/.config/herdr/"
   fi
+  if [ -d "$ROOT/home/.config/ghostty" ]; then
+    mkdir -p "$HOME/.config/ghostty"
+    rsync -a --exclude='.DS_Store' "$ROOT/home/.config/ghostty/" "$HOME/.config/ghostty/"
+  fi
   if [ -d "$ROOT/home/.config/dotfiles" ]; then
     mkdir -p "$HOME/.config/dotfiles"
     rsync -a --exclude='.DS_Store' "$ROOT/home/.config/dotfiles/" "$HOME/.config/dotfiles/"
@@ -325,6 +329,8 @@ doctor() {
     "$HOME/.config/dotfiles/gitconfig" \
     "$HOME/.config/dotfiles/ssh_config" \
     "$HOME/.config/herdr/config.toml" \
+    "$HOME/.config/ghostty/config" \
+    "$HOME/.config/ghostty/themes/Workshop Neon" \
     "$HOME/.config/nvim/init.lua" \
     "$HOME/.gitconfig" \
     "$HOME/.gitignore_global" \
@@ -332,6 +338,7 @@ doctor() {
     "$HOME/.pi/agent/extensions/worker-configuration-guard.ts" \
     "$HOME/.pi/agent/extensions/pi-cloak/index.ts" \
     "$HOME/.pi/agent/cloak.json" \
+    "$HOME/.pi/agent/themes/workshop-neon.json" \
     "$HOME/.agents/skills/wayfinder/SKILL.md" \
     "$HOME/.agents/skills/code-review/SKILL.md" \
     "$HOME/.agents/skills/herdr/SKILL.md"; do

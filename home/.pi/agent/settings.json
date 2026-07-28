@@ -1,6 +1,6 @@
 {
   "lastChangelogVersion": "0.82.1",
-  "theme": "light",
+  "theme": "workshop-neon",
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
   "defaultThinkingLevel": "high",

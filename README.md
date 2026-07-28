@@ -15,6 +15,7 @@ cd ~/.dotfiles
 - Pi extensions and package settings
 - Global agent skills (`~/.agents/skills`)
 - Selected Claude commands/agents
+- Coordinated Herdr, Ghostty, and Pi "Workshop Neon" terminal theme
 - Herdr config, skill, and Pi/Claude/Codex integrations
 - Minimal Neovim project-file picker and filesystem explorer
 - Shell PATH bootstrap for `~/.local/bin`, Homebrew, and npm globals
@@ -66,6 +67,19 @@ nvim
 - `Space e` toggles the filesystem explorer at the current file or working directory. Use `h`/`l` to move out/in, `j`/`k` to select, and `q` to close.
 
 The first Neovim launch clones the stable `mini.nvim` v0.17 release (compatible with Neovim 0.9+) into Neovim's data directory. This configuration does not change Herdr's sidebar.
+
+## Terminal theme
+
+Herdr, Ghostty, and Pi share the dark **Workshop Neon** palette: charcoal surfaces, warm parchment text, copper accents, and restrained teal/magenta status colors. Existing Ghostty split keybindings and font size remain managed in `home/.config/ghostty/config`.
+
+After syncing a theme change, reload the applications:
+
+```bash
+cd ~/.dotfiles && ./dot sync
+herdr config check && herdr server reload-config
+# Fully quit and reopen Ghostty so existing surfaces adopt its new palette.
+# In an existing Pi install: select workshop-neon in /settings, then restart Pi.
+```
 
 ## Herdr notes
 
