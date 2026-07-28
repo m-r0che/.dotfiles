@@ -153,6 +153,10 @@ sync_configs() {
     mkdir -p "$HOME/.config/dotfiles"
     rsync -a --exclude='.DS_Store' "$ROOT/home/.config/dotfiles/" "$HOME/.config/dotfiles/"
   fi
+  if [ -d "$ROOT/home/.config/nvim" ]; then
+    mkdir -p "$HOME/.config/nvim"
+    rsync -a --exclude='.DS_Store' "$ROOT/home/.config/nvim/" "$HOME/.config/nvim/"
+  fi
   if [ -f "$ROOT/home/.gitignore_global" ]; then
     install_managed_file_with_backup "$ROOT/home/.gitignore_global" "$HOME/.gitignore_global"
   fi
@@ -321,6 +325,7 @@ doctor() {
     "$HOME/.config/dotfiles/gitconfig" \
     "$HOME/.config/dotfiles/ssh_config" \
     "$HOME/.config/herdr/config.toml" \
+    "$HOME/.config/nvim/init.lua" \
     "$HOME/.gitconfig" \
     "$HOME/.gitignore_global" \
     "$HOME/.pi/agent/extensions/git-interceptor.ts" \

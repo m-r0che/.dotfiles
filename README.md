@@ -16,6 +16,7 @@ cd ~/.dotfiles
 - Global agent skills (`~/.agents/skills`)
 - Selected Claude commands/agents
 - Herdr config, skill, and Pi/Claude/Codex integrations
+- Minimal Neovim project-file picker and filesystem explorer
 - Shell PATH bootstrap for `~/.local/bin`, Homebrew, and npm globals
 - Git defaults and global ignore file
 - SSH host alias template/local include (included into `~/.ssh/config`)
@@ -51,6 +52,20 @@ References:
 `./dot sync` is merge-based for Pi/agent config so locally-added skills/extensions are preserved. Live app-owned Pi settings are copied only when missing; existing `~/.pi/agent/settings.json` is not overwritten by routine sync/update.
 
 Managed Git defaults are synced to `~/.config/dotfiles/gitconfig` and included from `~/.gitconfig` without overwriting existing credential helpers or identity. Put personal identity, signing config, and machine-specific settings in `~/.gitconfig.local`.
+
+## Neovim file navigation
+
+From a Herdr shell pane, change to a project and launch Neovim normally:
+
+```bash
+cd path/to/project
+nvim
+```
+
+- `Ctrl-P` fuzzy-finds files from the Git project root (or the current directory outside Git). Press `Enter` to open a file and `Tab` to preview it.
+- `Space e` toggles the filesystem explorer at the current file or working directory. Use `h`/`l` to move out/in, `j`/`k` to select, and `q` to close.
+
+The first Neovim launch clones the stable `mini.nvim` v0.17 release (compatible with Neovim 0.9+) into Neovim's data directory. This configuration does not change Herdr's sidebar.
 
 ## Herdr notes
 
