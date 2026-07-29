@@ -216,6 +216,16 @@
       "installedAt": "2026-07-15T16:15:09.855Z",
       "updatedAt": "2026-07-27T10:25:55Z"
     },
+    "improve-codebase-architecture": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/mattpocock/skills.git",
+      "ref": "main",
+      "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
+      "skillFolderHash": "bce229692e60dff3462e49bc5e774e83bef348e6",
+      "installedAt": "2026-07-29T10:11:18.473Z",
+      "updatedAt": "2026-07-29T10:11:18.473Z"
+    },
     "prototype": {
       "source": "mattpocock/skills",
       "sourceType": "github",

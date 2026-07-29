@@ -341,6 +341,7 @@ doctor() {
     "$HOME/.pi/agent/themes/workshop-neon.json" \
     "$HOME/.agents/skills/wayfinder/SKILL.md" \
     "$HOME/.agents/skills/code-review/SKILL.md" \
+    "$HOME/.agents/skills/improve-codebase-architecture/SKILL.md" \
     "$HOME/.agents/skills/herdr/SKILL.md"; do
     [ -e "$file" ] && printf '✓ %s\n' "${file/#$HOME/~}" || printf '✗ %s missing\n' "${file/#$HOME/~}"
   done
