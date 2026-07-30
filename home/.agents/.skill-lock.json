@@ -136,6 +136,16 @@
       "installedAt": "2026-06-15T10:53:12.456Z",
       "updatedAt": "2026-06-15T10:53:12.456Z"
     },
+    "ask-matt": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/mattpocock/skills.git",
+      "ref": "main",
+      "skillPath": "skills/engineering/ask-matt/SKILL.md",
+      "skillFolderHash": "c7d57789b230d6f88d26ca81ab9d03bad160171f",
+      "installedAt": "2026-07-29T10:45:04.290Z",
+      "updatedAt": "2026-07-29T10:45:04.290Z"
+    },
     "code-review": {
       "source": "mattpocock/skills",
       "sourceType": "github",

@@ -340,6 +340,7 @@ doctor() {
     "$HOME/.pi/agent/cloak.json" \
     "$HOME/.pi/agent/themes/workshop-neon.json" \
     "$HOME/.agents/skills/wayfinder/SKILL.md" \
+    "$HOME/.agents/skills/ask-matt/SKILL.md" \
     "$HOME/.agents/skills/code-review/SKILL.md" \
     "$HOME/.agents/skills/improve-codebase-architecture/SKILL.md" \
     "$HOME/.agents/skills/herdr/SKILL.md"; do
