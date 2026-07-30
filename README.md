@@ -63,10 +63,12 @@ cd path/to/project
 nvim
 ```
 
+- A persistent `nvim-tree.lua` project tree opens on the left and follows the active file. Press `Enter` to open a file, `a` to create, `r` to rename, `d` to delete, `R` to refresh, or `g?` for all tree mappings.
+- `Space e` toggles and focuses the project tree.
 - `Ctrl-P` fuzzy-finds files from the Git project root (or the current directory outside Git). Press `Enter` to open a file and `Tab` to preview it.
-- `Space e` toggles the filesystem explorer at the current file or working directory. Use `h`/`l` to move out/in, `j`/`k` to select, and `q` to close.
+- `Space f g` live-searches file contents across the project with ripgrep, including hidden files while respecting ignore files. Press `Enter` to open the matching line.
 
-The first Neovim launch clones the stable `mini.nvim` v0.17 release (compatible with Neovim 0.9+) into Neovim's data directory. This configuration does not change Herdr's sidebar.
+The first Neovim launch clones pinned releases of `mini.nvim`, `nvim-tree.lua`, and its optional icon provider into Neovim's data directory. `nvim-tree.lua` requires Neovim 0.10 or newer. This configuration does not change Herdr's sidebar.
 
 ## Terminal theme
 
