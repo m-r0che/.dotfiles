@@ -45,6 +45,28 @@ install_managed_file_with_backup() {
   cp "$src" "$dest"
 }
 
+sync_managed_links() {
+  local src_root="$1" dest_root="$2" backup_root="$3"
+  local src dest target backup
+  mkdir -p "$dest_root"
+
+  for src in "$src_root"/*; do
+    [ -L "$src" ] || continue
+    dest="$dest_root/$(basename "$src")"
+    target="$(readlink "$src")"
+    if [ -L "$dest" ] && [ "$(readlink "$dest")" = "$target" ]; then
+      continue
+    fi
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+      mkdir -p "$backup_root"
+      backup="$backup_root/$(basename "$dest").$(date +%Y%m%d-%H%M%S)"
+      mv "$dest" "$backup"
+      warn "moved existing ${dest/#$HOME/~} to ${backup/#$HOME/~}"
+    fi
+    ln -s "$target" "$dest"
+  done
+}
+
 ensure_gitconfig_include() {
   local gitconfig="$HOME/.gitconfig"
   local include_path="$HOME/.config/dotfiles/gitconfig"
@@ -181,6 +203,15 @@ sync_configs() {
   if [ -d "$ROOT/home/.claude/agents" ]; then
     mkdir -p "$HOME/.claude/agents"
     rsync -a --delete --exclude='.DS_Store' "$ROOT/home/.claude/agents/" "$HOME/.claude/agents/"
+  fi
+  if [ -d "$ROOT/home/.claude/skills" ]; then
+    # ~/.agents/skills is canonical. Claude-specific entries are portable links
+    # to that root, avoiding duplicate skill copies for Pi and Codex to discover.
+    sync_managed_links \
+      "$ROOT/home/.claude/skills" \
+      "$HOME/.claude/skills" \
+      "$HOME/.claude/skill-backups"
+    rsync -a --exclude='.DS_Store' "$ROOT/home/.claude/skills/" "$HOME/.claude/skills/"
   fi
 }
 
@@ -349,6 +380,19 @@ doctor() {
 
   check_pi_package "npm:pi-web-access"
   check_pi_package "npm:@plannotator/pi-extension"
+
+  local managed_link live_link claude_links_ok=true
+  for managed_link in "$ROOT/home/.claude/skills"/*; do
+    [ -L "$managed_link" ] || continue
+    live_link="$HOME/.claude/skills/$(basename "$managed_link")"
+    if [ ! -L "$live_link" ] || [ ! -e "$live_link" ]; then
+      warn "Claude skill link missing or broken: ${live_link/#$HOME/~}"
+      claude_links_ok=false
+    fi
+  done
+  if [ "$claude_links_ok" = true ]; then
+    printf '✓ managed Claude skill links resolve\n'
+  fi
 
   if has git; then
     if git config --global --includes user.name >/dev/null && git config --global --includes user.email >/dev/null; then
