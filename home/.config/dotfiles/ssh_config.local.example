@@ -8,3 +8,7 @@ Host abi
   ServerAliveInterval 30
   ServerAliveCountMax 3
   AddKeysToAgent yes
+  # macOS: store the key passphrase in the system Keychain so it survives reboots.
+  # Other OpenSSH clients safely ignore the Apple-specific option.
+  IgnoreUnknown UseKeychain
+  UseKeychain yes
