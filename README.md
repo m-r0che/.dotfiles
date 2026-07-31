@@ -14,7 +14,7 @@ cd ~/.dotfiles
 
 - Pi extensions and package settings
 - Global agent skills (`~/.agents/skills`)
-- Selected Claude commands/agents
+- Selected Claude commands/agents and global skill links
 - Coordinated Herdr, Ghostty, and Pi "Workshop Neon" terminal theme
 - Herdr config, skill, and Pi/Claude/Codex integrations
 - Minimal Neovim project-file picker and filesystem explorer
@@ -51,6 +51,8 @@ References:
 ## Sync safety
 
 `./dot sync` is merge-based for Pi/agent config so locally-added skills/extensions are preserved. Live app-owned Pi settings are copied only when missing; existing `~/.pi/agent/settings.json` is not overwritten by routine sync/update.
+
+Global skills live canonically under `~/.agents/skills`, where Pi and Codex discover them directly. Managed links under `~/.claude/skills` expose those same copies to Claude without making Pi load duplicate skill names. If a managed Claude skill already exists as a directory, sync moves it outside the discovery root to `~/.claude/skill-backups/` before installing the link.
 
 Managed Git defaults are synced to `~/.config/dotfiles/gitconfig` and included from `~/.gitconfig` without overwriting existing credential helpers or identity. Put personal identity, signing config, and machine-specific settings in `~/.gitconfig.local`.
 
