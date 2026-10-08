@@ -134,6 +134,8 @@ install_shell_hooks() {
 # Claude signed in with claude.ai gets it from the claude.ai connector, and a
 # local entry at the same URL would hide that connector, so Claude only gets a
 # local entry when it is signed in some other way (API key, Bedrock, Vertex).
+# Codex signed in with ChatGPT gets it from the ChatGPT connector, and Codex
+# keeps both copies side by side, so the same rule applies there.
 EXECUTOR_MCP_URL="https://v2.executor.sh/mcp"
 
 claude_auth_method() {
@@ -144,8 +146,16 @@ let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
 });' || true
 }
 
+codex_auth_method() {
+  has codex || return 0
+  case "$(codex login status 2>&1)" in
+    *ChatGPT*) printf 'chatgpt' ;;
+    *"Logged in"*) printf 'other' ;;
+  esac
+}
+
 ensure_executor_mcp() {
-  local codex_config="$HOME/.codex/config.toml" claude_auth
+  local codex_config="$HOME/.codex/config.toml" claude_auth codex_auth
 
   claude_auth="$(claude_auth_method)"
   if [ -n "$claude_auth" ] && [ "$claude_auth" != "claude.ai" ]; then
@@ -155,12 +165,13 @@ ensure_executor_mcp() {
     fi
   fi
 
-  if has codex || [ -d "$HOME/.codex" ]; then
+  codex_auth="$(codex_auth_method)"
+  if [ -n "$codex_auth" ] && [ "$codex_auth" != "chatgpt" ]; then
     mkdir -p "$HOME/.codex"
     touch "$codex_config"
     if ! grep -q '^\[mcp_servers\.executor\]' "$codex_config"; then
       printf '\n[mcp_servers.executor]\nurl = "%s"\n' "$EXECUTOR_MCP_URL" >>"$codex_config"
-      printf '✓ added executor MCP to ~/.codex/config.toml (sign in: codex mcp login executor)\n'
+      printf '✓ added executor MCP to ~/.codex/config.toml (non-ChatGPT sign-in; sign in: codex mcp login executor)\n'
     fi
   fi
 }
@@ -402,10 +413,19 @@ doctor() {
       && printf '✓ Claude executor MCP configured (%s sign-in)\n' "$claude_auth" \
       || warn "Claude ($claude_auth sign-in) has no executor MCP; run ./dot sync"
   fi
-  if [ -f "$HOME/.codex/config.toml" ]; then
-    grep -q '^\[mcp_servers\.executor\]' "$HOME/.codex/config.toml" \
-      && printf '✓ Codex executor MCP configured\n' \
-      || warn "Codex has no executor MCP; run ./dot sync"
+  local codex_auth codex_local=""
+  codex_auth="$(codex_auth_method)"
+  grep -qs '^\[mcp_servers\.executor\]' "$HOME/.codex/config.toml" && codex_local=1
+  if [ "$codex_auth" = "chatgpt" ]; then
+    if [ -n "$codex_local" ]; then
+      warn "Codex has a local executor MCP as well as the ChatGPT Executor connector; remove [mcp_servers.executor] from ~/.codex/config.toml"
+    else
+      printf '✓ Codex uses the ChatGPT Executor connector (add it once on chatgpt.com)\n'
+    fi
+  elif [ -n "$codex_auth" ]; then
+    [ -n "$codex_local" ] \
+      && printf '✓ Codex executor MCP configured (non-ChatGPT sign-in)\n' \
+      || warn "Codex (non-ChatGPT sign-in) has no executor MCP; run ./dot sync"
   fi
 
   if has herdr; then
