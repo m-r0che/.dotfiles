@@ -23,6 +23,7 @@ cd ~/.dotfiles
 - SSH host alias template/local include (included into `~/.ssh/config`)
 - Basic macOS/Linux package lists
 - Wrangler for Cloudflare development
+- Executor MCP (`https://v2.executor.sh/mcp`) in Codex and Cursor; Claude gets it from the claude.ai connector
 
 ## Commands
 
@@ -34,6 +35,16 @@ cd ~/.dotfiles
 ./dot install-herdr              # install Herdr if missing and install integrations
 ./dot install-herdr-integrations # install Pi/Claude/Codex Herdr integrations only
 ```
+
+## Executor MCP
+
+[Executor](https://v2.executor.sh/docs) is the shared tool host: Linear, Slack, PostHog, Stripe, Cloudflare and the Abi staff MCP behind one MCP endpoint, with approvals before writes.
+
+`./dot sync` adds an `executor` server to `~/.codex/config.toml` and `~/.cursor/mcp.json` when it is missing, and never edits other servers. Each client then signs in once in the browser:
+
+- Codex: `codex mcp login executor`
+- Cursor: Settings → MCP → executor → Connect
+- Claude: add Executor once as a claude.ai custom connector; every machine signed in to claude.ai gets it. Do not add a local `executor` server: one at the same URL hides the connector.
 
 ## Linux Node.js strategy
 
