@@ -23,7 +23,7 @@ cd ~/.dotfiles
 - SSH host alias template/local include (included into `~/.ssh/config`)
 - Basic macOS/Linux package lists
 - Wrangler for Cloudflare development
-- Executor MCP (`https://v2.executor.sh/mcp`) in Codex and Cursor; Claude gets it from the claude.ai connector
+- Executor MCP (`https://v2.executor.sh/mcp`) in Codex and Cursor, and in Claude when it is not signed in with claude.ai (otherwise the claude.ai connector provides it)
 
 ## Commands
 
@@ -44,7 +44,8 @@ cd ~/.dotfiles
 
 - Codex: `codex mcp login executor`
 - Cursor: Settings → MCP → executor → Connect
-- Claude: add Executor once as a claude.ai custom connector; every machine signed in to claude.ai gets it. Do not add a local `executor` server: one at the same URL hides the connector.
+- Claude signed in with claude.ai: add Executor once as a claude.ai custom connector and every such machine gets it. `./dot sync` adds no local server here, because one at the same URL hides the connector (`./dot doctor` warns if one exists).
+- Claude signed in another way (API key, Bedrock, Vertex): no claude.ai connectors load, so `./dot sync` adds a local `executor` server. Sign in with `/mcp`.
 
 ## Linux Node.js strategy
 
