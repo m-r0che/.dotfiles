@@ -23,7 +23,7 @@ cd ~/.dotfiles
 - SSH host alias template/local include (included into `~/.ssh/config`)
 - Basic macOS/Linux package lists
 - Wrangler for Cloudflare development
-- Executor MCP (`https://v2.executor.sh/mcp`) in Codex and Cursor, and in Claude when it is not signed in with claude.ai (otherwise the claude.ai connector provides it)
+- Executor MCP (`https://v2.executor.sh/mcp`) in Codex, and in Claude when it is not signed in with claude.ai (otherwise the claude.ai connector provides it)
 
 ## Commands
 
@@ -40,10 +40,10 @@ cd ~/.dotfiles
 
 [Executor](https://v2.executor.sh/docs) is the shared tool host: Linear, Slack, PostHog, Stripe, Cloudflare and the Abi staff MCP behind one MCP endpoint, with approvals before writes.
 
-`./dot sync` adds an `executor` server to `~/.codex/config.toml` and `~/.cursor/mcp.json` when it is missing, and never edits other servers. Each client then signs in once in the browser:
+`./dot sync` adds an `executor` server to `~/.codex/config.toml` when it is missing, and never edits other servers. Each client then signs in once in the browser:
 
 - Codex: `codex mcp login executor`
-- Cursor: Settings → MCP → executor → Connect
+- Cursor (desktop, cloud agents and the Grok bots): connect Executor once in the Cursor web app. `./dot sync` adds no `~/.cursor/mcp.json` entry, which would duplicate it.
 - Claude signed in with claude.ai: add Executor once as a claude.ai custom connector and every such machine gets it. `./dot sync` adds no local server here, because one at the same URL hides the connector (`./dot doctor` warns if one exists).
 - Claude signed in another way (API key, Bedrock, Vertex): no claude.ai connectors load, so `./dot sync` adds a local `executor` server. Sign in with `/mcp`.
 
