@@ -151,6 +151,8 @@ install_shell_hooks() {
 }
 
 # Executor (https://v2.executor.sh) is the shared tool host for every agent.
+# Cursor and the Grok bots get it from the Cursor account (web app), so no
+# ~/.cursor/mcp.json entry: a local one would duplicate it.
 # Claude signed in with claude.ai gets it from the claude.ai connector, and a
 # local entry at the same URL would hide that connector, so Claude only gets a
 # local entry when it is signed in some other way (API key, Bedrock, Vertex).
@@ -165,7 +167,7 @@ let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
 }
 
 ensure_executor_mcp() {
-  local codex_config="$HOME/.codex/config.toml" cursor_config="$HOME/.cursor/mcp.json" claude_auth
+  local codex_config="$HOME/.codex/config.toml" claude_auth
 
   claude_auth="$(claude_auth_method)"
   if [ -n "$claude_auth" ] && [ "$claude_auth" != "claude.ai" ]; then
@@ -182,25 +184,6 @@ ensure_executor_mcp() {
       printf '\n[mcp_servers.executor]\nurl = "%s"\n' "$EXECUTOR_MCP_URL" >>"$codex_config"
       printf '✓ added executor MCP to ~/.codex/config.toml (sign in: codex mcp login executor)\n'
     fi
-  fi
-
-  if [ -d "$HOME/.cursor" ]; then
-    if ! has node; then
-      warn "node missing; cannot add executor MCP to ~/.cursor/mcp.json"
-      return 0
-    fi
-    # Merge one key; every other server, header and env value is left as it is.
-    EXECUTOR_MCP_URL="$EXECUTOR_MCP_URL" node - "$cursor_config" <<'NODE'
-const fs = require('fs');
-const file = process.argv[2];
-const config = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
-config.mcpServers ??= {};
-if (!config.mcpServers.executor) {
-  config.mcpServers.executor = { type: 'http', url: process.env.EXECUTOR_MCP_URL };
-  fs.writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`);
-  console.log('✓ added executor MCP to ~/.cursor/mcp.json (sign in from Cursor MCP settings)');
-}
-NODE
   fi
 }
 
@@ -475,11 +458,6 @@ doctor() {
     grep -q '^\[mcp_servers\.executor\]' "$HOME/.codex/config.toml" \
       && printf '✓ Codex executor MCP configured\n' \
       || warn "Codex has no executor MCP; run ./dot sync"
-  fi
-  if [ -f "$HOME/.cursor/mcp.json" ]; then
-    grep -q '"executor"' "$HOME/.cursor/mcp.json" \
-      && printf '✓ Cursor executor MCP configured\n' \
-      || warn "Cursor has no executor MCP; run ./dot sync"
   fi
 
   if has herdr; then
