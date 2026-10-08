@@ -150,6 +150,60 @@ install_shell_hooks() {
   fi
 }
 
+# Executor (https://v2.executor.sh) is the shared tool host for every agent.
+# Claude signed in with claude.ai gets it from the claude.ai connector, and a
+# local entry at the same URL would hide that connector, so Claude only gets a
+# local entry when it is signed in some other way (API key, Bedrock, Vertex).
+EXECUTOR_MCP_URL="https://v2.executor.sh/mcp"
+
+claude_auth_method() {
+  has claude && has node || return 0
+  claude auth status --json 2>/dev/null | node -e '
+let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
+  try { const a = JSON.parse(s); if (a.loggedIn) process.stdout.write(a.authMethod || "other"); } catch {}
+});' || true
+}
+
+ensure_executor_mcp() {
+  local codex_config="$HOME/.codex/config.toml" cursor_config="$HOME/.cursor/mcp.json" claude_auth
+
+  claude_auth="$(claude_auth_method)"
+  if [ -n "$claude_auth" ] && [ "$claude_auth" != "claude.ai" ]; then
+    if ! claude mcp get executor >/dev/null 2>&1; then
+      claude mcp add --transport http --scope user executor "$EXECUTOR_MCP_URL" >/dev/null
+      printf '✓ added executor MCP to Claude (%s sign-in has no claude.ai connectors; run /mcp to sign in)\n' "$claude_auth"
+    fi
+  fi
+
+  if has codex || [ -d "$HOME/.codex" ]; then
+    mkdir -p "$HOME/.codex"
+    touch "$codex_config"
+    if ! grep -q '^\[mcp_servers\.executor\]' "$codex_config"; then
+      printf '\n[mcp_servers.executor]\nurl = "%s"\n' "$EXECUTOR_MCP_URL" >>"$codex_config"
+      printf '✓ added executor MCP to ~/.codex/config.toml (sign in: codex mcp login executor)\n'
+    fi
+  fi
+
+  if [ -d "$HOME/.cursor" ]; then
+    if ! has node; then
+      warn "node missing; cannot add executor MCP to ~/.cursor/mcp.json"
+      return 0
+    fi
+    # Merge one key; every other server, header and env value is left as it is.
+    EXECUTOR_MCP_URL="$EXECUTOR_MCP_URL" node - "$cursor_config" <<'NODE'
+const fs = require('fs');
+const file = process.argv[2];
+const config = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+config.mcpServers ??= {};
+if (!config.mcpServers.executor) {
+  config.mcpServers.executor = { type: 'http', url: process.env.EXECUTOR_MCP_URL };
+  fs.writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`);
+  console.log('✓ added executor MCP to ~/.cursor/mcp.json (sign in from Cursor MCP settings)');
+}
+NODE
+  fi
+}
+
 sync_configs() {
   log "Syncing managed configs"
   if ! has rsync; then
@@ -213,6 +267,8 @@ sync_configs() {
       "$HOME/.claude/skill-backups"
     rsync -a --exclude='.DS_Store' "$ROOT/home/.claude/skills/" "$HOME/.claude/skills/"
   fi
+
+  ensure_executor_mcp
 }
 
 install_nodesource_linux() {
@@ -400,6 +456,30 @@ doctor() {
     else
       warn "git global user.name/user.email not set; put machine-specific identity in ~/.gitconfig.local"
     fi
+  fi
+
+  local claude_auth
+  claude_auth="$(claude_auth_method)"
+  if [ "$claude_auth" = "claude.ai" ]; then
+    if claude mcp get executor >/dev/null 2>&1; then
+      warn "Claude has a local executor MCP; it hides the claude.ai Executor connector (claude mcp remove executor -s user)"
+    else
+      printf '✓ Claude uses the claude.ai Executor connector (add it once in claude.ai Settings → Connectors)\n'
+    fi
+  elif [ -n "$claude_auth" ]; then
+    claude mcp get executor >/dev/null 2>&1 \
+      && printf '✓ Claude executor MCP configured (%s sign-in)\n' "$claude_auth" \
+      || warn "Claude ($claude_auth sign-in) has no executor MCP; run ./dot sync"
+  fi
+  if [ -f "$HOME/.codex/config.toml" ]; then
+    grep -q '^\[mcp_servers\.executor\]' "$HOME/.codex/config.toml" \
+      && printf '✓ Codex executor MCP configured\n' \
+      || warn "Codex has no executor MCP; run ./dot sync"
+  fi
+  if [ -f "$HOME/.cursor/mcp.json" ]; then
+    grep -q '"executor"' "$HOME/.cursor/mcp.json" \
+      && printf '✓ Cursor executor MCP configured\n' \
+      || warn "Cursor has no executor MCP; run ./dot sync"
   fi
 
   if has herdr; then
